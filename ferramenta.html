@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Parâmetros de Fresamento</title>
+    <!-- Carrega Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração do tema (Opcional: Define a fonte Inter) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="bg-gray-800 text-white p-6 md:p-10 rounded-xl shadow-2xl w-full max-w-lg transition-all duration-300">
+        <!-- Título e Descrição -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-teal-400">Parâmetros de Fresamento CNC</h1>
+            <p class="mt-2 text-gray-400">Calcule a Rotação (RPM) e o Avanço da Mesa ($V_f$) rapidamente.</p>
+        </header>
+
+        <!-- Seção de Entradas -->
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Diâmetro da Fresa (D) -->
+                <div class="input-group">
+                    <label for="inputD" class="block text-sm font-medium text-gray-300 mb-1">
+                        Diâmetro da Fresa $D$ (mm)
+                    </label>
+                    <input type="number" id="inputD" value="63" step="0.1"
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-500 transition duration-150 ease-in-out"
+                           placeholder="Ex: 63.0" aria-label="Diâmetro da Fresa">
+                </div>
+
+                <!-- Velocidade de Corte (Vc) -->
+                <div class="input-group">
+                    <label for="inputVc" class="block text-sm font-medium text-gray-300 mb-1">
+                        Velocidade de Corte $V_c$ (m/min)
+                    </label>
+                    <input type="number" id="inputVc" value="180" step="1"
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-500 transition duration-150 ease-in-out"
+                           placeholder="Ex: 180" aria-label="Velocidade de Corte">
+                </div>
+
+                <!-- Número de Pastilhas (z) -->
+                <div class="input-group">
+                    <label for="inputZ" class="block text-sm font-medium text-gray-300 mb-1">
+                        Número de Pastilhas $z$ (unid)
+                    </label>
+                    <input type="number" id="inputZ" value="6" step="1"
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-500 transition duration-150 ease-in-out"
+                           placeholder="Ex: 6" aria-label="Número de Pastilhas">
+                </div>
+
+                <!-- Avanço por Dente (fz) -->
+                <div class="input-group">
+                    <label for="inputFz" class="block text-sm font-medium text-gray-300 mb-1">
+                        Avanço por Dente $f_z$ (mm/dente)
+                    </label>
+                    <input type="number" id="inputFz" value="0.15" step="0.01"
+                           class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-500 transition duration-150 ease-in-out"
+                           placeholder="Ex: 0.15" aria-label="Avanço por Dente">
+                </div>
+            </div>
+
+            <!-- Botão de Cálculo -->
+            <button onclick="calculateMillingParams()"
+                    class="w-full mt-4 p-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-teal-500 focus:ring-opacity-50">
+                CALCULAR PARÂMETROS
+            </button>
+        </div>
+
+        <!-- Seção de Resultados -->
+        <div id="results-container" class="mt-8 pt-6 border-t border-gray-700">
+            <h2 class="text-xl font-bold mb-4 text-center text-teal-300">Resultados da Usinagem</h2>
+            
+            <!-- RPM Card -->
+            <div class="flex justify-between items-center p-4 bg-gray-700 rounded-lg mb-4 shadow-inner">
+                <span class="text-lg font-medium text-gray-300">Rotação do Eixo $n$</span>
+                <span id="resultRPM" class="text-2xl font-extrabold text-yellow-400">--- RPM</span>
+            </div>
+
+            <!-- Avanço da Mesa Card -->
+            <div class="flex justify-between items-center p-4 bg-gray-700 rounded-lg shadow-inner">
+                <span class="text-lg font-medium text-gray-300">Avanço da Mesa $V_f$</span>
+                <span id="resultVf" class="text-2xl font-extrabold text-yellow-400">--- mm/min</span>
+            </div>
+            
+            <!-- Sugestão de Código CNC -->
+            <div id="cncCode" class="mt-4 p-4 bg-gray-900 border border-gray-700 rounded-lg hidden">
+                <p class="text-sm font-semibold text-teal-300 mb-2">Sugestão de Código CNC (n e F):</p>
+                <code class="block text-gray-100 text-xs md:text-sm">
+                    G97 S<span id="cnc_s_value">...</span> M03<br>
+                    G01 X... Y... F<span id="cnc_f_value">...</span>
+                </code>
+            </div>
+
+             <!-- Mensagem de Status/Erro -->
+            <p id="statusMessage" class="mt-4 text-center text-sm text-red-400 hidden">
+                Por favor, preencha todos os campos com valores válidos e positivos.
+            </p>
+        </div>
+
+        <!-- Seção de Fórmulas -->
+        <div class="mt-8 pt-6 border-t border-gray-700">
+            <h3 class="text-lg font-bold text-center text-teal-400 mb-3">Fórmulas Utilizadas</h3>
+            <div class="text-sm text-gray-400 text-center space-y-2">
+                <p><strong>Rotação ($n$):</strong> $$n = \frac{V_c \times 1000}{\pi \times D}$$</p>
+                <p><strong>Avanço da Mesa ($V_f$):</strong> $$V_f = n \times z \times f_z$$</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Função principal para calcular os parâmetros
+        function calculateMillingParams() {
+            // Pega os valores dos inputs e converte para número
+            const D = parseFloat(document.getElementById('inputD').value);
+            const Vc = parseFloat(document.getElementById('inputVc').value);
+            const z = parseInt(document.getElementById('inputZ').value, 10);
+            const fz = parseFloat(document.getElementById('inputFz').value);
+
+            const statusMessage = document.getElementById('statusMessage');
+            const resultRPM = document.getElementById('resultRPM');
+            const resultVf = document.getElementById('resultVf');
+            const cncCodeDiv = document.getElementById('cncCode');
+
+            // Reset UI
+            statusMessage.classList.add('hidden');
+            cncCodeDiv.classList.add('hidden');
+            
+            // 1. Validação de Entrada
+            if (isNaN(D) || isNaN(Vc) || isNaN(z) || isNaN(fz) || D <= 0 || Vc <= 0 || z <= 0 || fz <= 0) {
+                resultRPM.textContent = '--- RPM';
+                resultVf.textContent = '--- mm/min';
+                statusMessage.textContent = 'ERRO: Todos os campos devem ser preenchidos com valores numéricos válidos e positivos.';
+                statusMessage.classList.remove('hidden');
+                return;
+            }
+
+            // 2. Cálculo da Rotação (RPM - n)
+            // n = (Vc * 1000) / (pi * D)
+            const n_float = (Vc * 1000) / (Math.PI * D);
+            
+            // Arredonda a RPM para o número inteiro mais próximo, como é feito na prática
+            const n_final = Math.round(n_float);
+
+            // 3. Cálculo do Avanço da Mesa (Vf)
+            // Vf = n * z * fz
+            const Vf_float = n_final * z * fz;
+            
+            // Arredonda o avanço da mesa com 2 casas decimais
+            const Vf_final = Vf_float.toFixed(2);
+
+            // 4. Atualiza a interface (UI)
+            resultRPM.textContent = `${n_final} RPM`;
+            resultVf.textContent = `${Vf_final} mm/min`;
+
+            // 5. Atualiza a sugestão de Código CNC
+            document.getElementById('cnc_s_value').textContent = n_final;
+            document.getElementById('cnc_f_value').textContent = Vf_final;
+            cncCodeDiv.classList.remove('hidden');
+
+            // Opcional: Console log para debugging
+            console.log(`D: ${D}, Vc: ${Vc}, z: ${z}, fz: ${fz}`);
+            console.log(`n (float): ${n_float.toFixed(2)} -> n (final): ${n_final} RPM`);
+            console.log(`Vf: ${Vf_final} mm/min`);
+        }
+
+        // Executa o cálculo inicial com os valores de exemplo ao carregar a página
+        document.addEventListener('DOMContentLoaded', calculateMillingParams);
+    </script>
+</body>
+</html>
